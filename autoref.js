@@ -1,32 +1,9 @@
 import { ethers } from 'ethers';
-import fs from 'fs/promises';
-import readline from 'readline';
-import log from './utils/logger.js';
-import LayerEdge from './utils/socket.js';
-import { readFile } from './utils/helper.js';
-import fetch from 'node-fetch';
-
-// Function to automatically fetch proxies and save them to proxy.txt
-async function autoFetchProxies() {
-    const proxySourceUrl = 'https://www.proxy-list.download/api/v1/get?type=https'; // Example URL for fetching proxies
-
-    setInterval(async () => {
-        try {
-            const response = await fetch(proxySourceUrl);
-            const data = await response.text();
-            const proxies = data.split('\n').filter(proxy => proxy); // Split by new line and filter out empty lines
-
-            // Save proxies to proxy.txt
-            await fs.writeFile('proxy.txt', proxies.join('\n'), { flag: 'w' });
-            log.info("Proxies fetched and saved to proxy.txt");
-        } catch (error) {
-            log.error('Error fetching proxies:', error.message);
-        }
-    }, 10000); // Fetch every 10 seconds
-}
-
-// Call the function to start fetching proxies
-autoFetchProxies();
+import fs from 'node:fs/promises'; // Use node: prefix for built-in modules
+import readline from 'node:readline'; // Use node: prefix for built-in modules
+import log from './utils/logger.js'; // Ensure correct path and extension
+import LayerEdge from './utils/socket.js'; // Ensure correct path and extension
+import { readFile } from './utils/helper.js'; // Ensure correct path and extension
 
 function createNewWallet() {
     const wallet = ethers.Wallet.createRandom();
@@ -42,4 +19,67 @@ function createNewWallet() {
     return walletDetails;
 }
 
-// ... (rest of your existing code)
+async function saveWalletToFile(walletDetails) {
+    let wallets = [];
+    try {
+        if (await fs.stat("wallets.json").catch(() => false)) {
+            const data = await fs.readFile("wallets.json", "utf8");
+            wallets = JSON.parse(data);
+        }
+    } catch (err) {
+        log.error("Error reading wallets.json:", err);
+    }
+
+    wallets.push(walletDetails);
+
+    try {
+        await fs.writeFile("wallets.json", JSON.stringify(wallets, null, 2));
+        log.info("Wallet saved to wallets.json");
+    } catch (err) {
+        log.error("Error writing to wallets.json:", err);
+    }
+}
+
+// Function to ask a question 
+async function askQuestion(question) {
+    const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout,
+    });
+
+    return new Promise((resolve) => {
+        rl.question(question, (answer) => {
+            rl.close();
+            resolve(answer);
+        });
+    });
+}
+
+async function autoRegister() {
+    const proxies = await readFile('proxy.txt');
+    if (proxies.length === 0) {
+        log.warn('No proxies found, running without proxy...');
+    }
+    const numberOfWallets = await askQuestion("How many wallets/ref do you want to create? ");
+    const refCode = await askQuestion("Enter Your Referral code example => O8Ijyqih: ");
+    
+    for (let i = 0; i < numberOfWallets; i++) {
+        const proxy = proxies[i % proxies.length] || null;
+        try {
+            log.info(`Create and Registering Wallets: ${i + 1}/${numberOfWallets} Using Proxy:`, proxy);
+            const walletDetails = createNewWallet();
+            const socket = new LayerEdge(proxy, walletDetails.privateKey, refCode);
+            await socket.checkInvite();
+            const isRegistered = await socket.registerWallet();
+            if (isRegistered) {
+                await saveWalletToFile(walletDetails);
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        } catch (error) {
+            log.error('Error creating wallet:', error.message);
+        }
+    }
+}
+
+autoRegister();
