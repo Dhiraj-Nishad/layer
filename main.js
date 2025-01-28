@@ -60,7 +60,7 @@ async function run() {
             }
         }
         log.warn(`All Wallets have been processed, waiting 1 hours before next run...`);
-        await delay(60 * 60);
+        await delay(2 * 2);
     }
 }
 
