@@ -1,7 +1,8 @@
-import { ethers } from 'ethers';
-import fs from 'fs/promises';
-import readline from 'readline';
-import log from './utils/logger.js';
+
+import { ethers } from 'ethers'
+import fs from 'fs/promises'
+import readline from 'readline'
+import log from './utils/logger.js'
 import LayerEdge from './utils/socket.js';
 import { readFile } from './utils/helper.js';
 
@@ -18,6 +19,7 @@ function createNewWallet() {
 
     return walletDetails;
 }
+
 
 async function saveWalletToFile(walletDetails) {
     let wallets = [];
@@ -37,15 +39,6 @@ async function saveWalletToFile(walletDetails) {
         log.info("Wallet saved to wallets.json");
     } catch (err) {
         log.error("Error writing to wallets.json:", err);
-    }
-}
-
-async function saveMnemonicToFile(mnemonic) {
-    try {
-        await fs.appendFile("mnemonics.txt", mnemonic + "\n");
-        log.info("Mnemonic saved to mnemonics.txt");
-    } catch (err) {
-        log.error("Error writing to mnemonics.txt:", err);
     }
 }
 
@@ -69,29 +62,18 @@ async function autoRegister() {
     if (proxies.length === 0) {
         log.warn('No proxies found, running without proxy...');
     }
-    
     const numberOfWallets = await askQuestion("How many wallets/ref do you want to create? ");
-    
-    if (isNaN(numberOfWallets) || numberOfWallets <= 0) {
-        log.error("Please enter a valid number of wallets.");
-        return;
-    }
-
     const refCode = await askQuestion("Enter Your Referral code example => O8Ijyqih: ");
-    
     for (let i = 0; i < numberOfWallets; i++) {
         const proxy = proxies[i % proxies.length] || null;
-        
         try {
             log.info(`Create and Registering Wallets: ${i + 1}/${numberOfWallets} Using Proxy:`, proxy);
             const walletDetails = createNewWallet();
-            await saveMnemonicToFile(walletDetails.mnemonic); // Save the mnemonic
             const socket = new LayerEdge(proxy, walletDetails.privateKey, refCode);
-            await socket.checkInvite();
+            await socket.checkInvite()
             const isRegistered = await socket.registerWallet();
-            
             if (isRegistered) {
-                await saveWalletToFile(walletDetails); // Await this operation
+                saveWalletToFile(walletDetails);
             }
 
             await new Promise(resolve => setTimeout(resolve, 1000));
@@ -101,4 +83,4 @@ async function autoRegister() {
     }
 }
 
-autoRegister();
+autoRegister()
