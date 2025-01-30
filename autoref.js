@@ -60,20 +60,16 @@ async function autoRegister() {
     if (proxies.length === 0) {
         log.warn('No proxies found, running without proxy...');
     }
-    const numberOfWallets = await askQuestion("How many wallets/ref do you want to create? ");
-    const refCode = await askQuestion("Enter Your Referral code example => O8Ijyqih: ");
+    
+    const numberOfWallets = await askQuestion("How many wallets do you want to create? ");
     
     for (let i = 0; i < numberOfWallets; i++) {
         const proxy = proxies[i % proxies.length] || null;
         try {
-            log.info(`Create and Registering Wallets: ${i + 1}/${numberOfWallets} Using Proxy:`, proxy);
+            log.info(`Creating Wallet: ${i + 1}/${numberOfWallets} Using Proxy:`, proxy);
             const walletDetails = createNewWallet();
-            const socket = new LayerEdge(proxy, walletDetails.privateKey, refCode);
-            await socket.checkInvite();
-            const isRegistered = await socket.registerWallet();
-            if (isRegistered) {
-                await saveWalletToFile(walletDetails);
-            }
+            // Removed referral code handling
+            await saveWalletToFile(walletDetails);
 
             await new Promise(resolve => setTimeout(resolve, 1000));
         } catch (error) {
